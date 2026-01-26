@@ -1,0 +1,326 @@
+html {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 100%);
+  color: #e0e0e0;
+  overflow: hidden;
+}
+
+.window {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  min-width: 300px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+
+.window-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: move;
+  border-radius: 12px 12px 0 0;
+  user-select: none;
+}
+
+.window-title {
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.window-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.window-control {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 12px;
+}
+
+.window-control.minimize {
+  background: #ffbd44;
+}
+
+.window-control.minimize:hover {
+  background: #ffc857;
+}
+
+.window-control.maximize {
+  background: #00ca4e;
+}
+
+.window-control.maximize:hover {
+  background: #00ff5a;
+}
+
+.window-control.close {
+  background: #ff5f56;
+}
+
+.window-control.close:hover {
+  background: #ff6b63;
+}
+
+.window-control.pin {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.window-control.pin:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.window-control.split {
+  color: #a78bfa;
+  background: rgba(167, 139, 250, 0.2);
+  position: relative;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+}
+
+.window-control.split:hover {
+  background: rgba(167, 139, 250, 0.3);
+}
+
+.split-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: rgba(20, 20, 30, 0.95);
+  border: 1px solid rgba(167, 139, 250, 0.5);
+  border-radius: 8px;
+  min-width: 200px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.2s ease;
+  margin-top: 5px;
+  backdrop-filter: blur(10px);
+}
+
+.split-menu.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.split-option {
+  padding: 10px 15px;
+  color: #e0e0e0;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+  font-size: 13px;
+}
+
+.split-option:last-child {
+  border-bottom: none;
+}
+
+.split-option:hover {
+  background: rgba(167, 139, 250, 0.3);
+  color: #a78bfa;
+  padding-left: 20px;
+}
+
+.window-content {
+  flex: 1;
+  padding: 16px;
+  overflow: auto;
+  color: white;
+}
+
+.dock {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 70px;
+  height: auto;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 10px;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  z-index: 999;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+.dock.hidden {
+  display: none !important;
+}
+
+.dock-icon {
+  width: 50px;
+  height: 50px;
+  background: rgba(100, 181, 246, 0.3);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 28px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dock-icon:hover {
+  background: rgba(100, 181, 246, 0.5);
+  transform: scale(1.1);
+}
+
+.dock-icon.active {
+  background: rgba(100, 181, 246, 0.7);
+  border-color: #64B5F6;
+}
+
+#desktop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.btn {
+  padding: 10px 20px;
+  background: rgba(100, 181, 246, 0.3);
+  color: white;
+  border: 1px solid rgba(100, 181, 246, 0.5);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.btn:hover {
+  background: rgba(100, 181, 246, 0.5);
+  border-color: rgba(100, 181, 246, 0.8);
+}
+
+.btn-primary {
+  background: #64B5F6;
+  color: #0f1419;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: #42A5F5;
+  box-shadow: 0 4px 12px rgba(100, 181, 246, 0.4);
+}
+
+input, textarea, select {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(100, 181, 246, 0.3);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: inherit;
+}
+
+input::placeholder, textarea::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: #64B5F6;
+  background: rgba(100, 181, 246, 0.15);
+  box-shadow: 0 0 0 3px rgba(100, 181, 246, 0.1);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.device-phone .window {
+  width: 90% !important;
+  height: 90% !important;
+  left: 5% !important;
+  top: 5% !important;
+}
+
+.device-tablet .window {
+  width: 75% !important;
+  height: 80% !important;
+}
+
+code {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Courier New', monospace;
+  color: #FFB74D;
+}
+
+pre {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  border-left: 3px solid #64B5F6;
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 0.85rem;
+}
+
+.nam-tab-btn {
+  padding: 8px 16px;
+  background: rgba(100, 181, 246, 0.5);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nam-tab-btn.active {
+  background: #64B5F6;
+  color: #0f1419;
+  font-weight: bold;
+}
+
+.nam-tab-btn:hover {
+  background: rgba(100, 181, 246, 0.7);
+}
+
+.nam-tab-content {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  display: none;
+}
+
+.nam-tab-content.active {
+  display: block;
+}
