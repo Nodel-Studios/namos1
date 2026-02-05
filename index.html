@@ -480,9 +480,11 @@
         }
 
         .dock.hidden {
+            display: none;
         }
 
         .dock.visible {
+            display: flex;
         }
 
         .dock-icon {
@@ -1706,6 +1708,7 @@
 
         /* Dock icons */
         .dock-icon {
+            opacity: 1;
         }
 
         /* Status bar animation */
@@ -1730,6 +1733,7 @@
         }
         
         .app-icon {
+            opacity: 1;
         }
         
         .app-icon:nth-child(1) { animation-delay: 0.05s; }
@@ -3904,7 +3908,7 @@
         .di-track-info {
             flex: 1;
             display: flex;
-            flex-column: column;
+            flex-direction: column;
         }
 
         .di-track-name { font-weight: 600; font-size: 16px; }
@@ -4652,81 +4656,81 @@
                 document.documentElement.style.setProperty('--status-bar-height', '40px');
             }
 
-             init() {
-                 console.log('init() called, isInstalled:', this.isInstalled, 'lockScreenEnabled:', this.lockScreenEnabled);
-                 this.updateClock();
-                 setInterval(() => this.updateClock(), 500);
-                 this.updateDeviceInfo();
-                 this.applyCustomSettings();
-                 this.startResourceMonitoring();
-                 this.initializeLockScreen();
-                 this.initializeNotificationCenter();
-                 this.initializeHomeScreenPages();
-                 this.initializeAddAppsCenter();
-                 this.initializeFlashlightSearch();
-                 this.initializeDock();
+            init() {
+                console.log('init() called, isInstalled:', this.isInstalled, 'lockScreenEnabled:', this.lockScreenEnabled);
+                this.updateClock();
+                setInterval(() => this.updateClock(), 500);
+                this.updateDeviceInfo();
+                this.applyCustomSettings();
+                this.startResourceMonitoring();
+                this.initializeLockScreen();
+                this.initializeNotificationCenter();
+                this.initializeHomeScreenPages();
+                this.initializeAddAppsCenter();
+                this.initializeFlashlightSearch();
+                this.initializeDock();
 
-                 if (!navigator.userAgent.toLowerCase().match(/mobile|iphone|ipod|android/)) {
-                     setTimeout(() => {
-                         this.forceDesktopMode();
-                     }, 100);
-                 }
+                if (!navigator.userAgent.toLowerCase().match(/mobile|iphone|ipod|android/)) {
+                    setTimeout(() => {
+                        this.forceDesktopMode();
+                    }, 100);
+                }
 
-                 setTimeout(() => {
-                     console.log('About to check isInstalled:', this.isInstalled);
-                     if (this.isInstalled) {
-                         console.log('System is installed, lockScreenEnabled:', this.lockScreenEnabled);
-                         if (this.lockScreenEnabled) {
-                             console.log('Calling showLockScreen()');
-                             this.showLockScreen();
-                         } else {
-                             console.log('Calling showDesktop()');
-                             this.showDesktop();
-                         }
-                     } else {
-                         console.log('System NOT installed, calling showInstallation()');
-                         this.showInstallation();
-                     }
-                 }, 800);
+                setTimeout(() => {
+                    console.log('About to check isInstalled:', this.isInstalled);
+                    if (this.isInstalled) {
+                        console.log('System is installed, lockScreenEnabled:', this.lockScreenEnabled);
+                        if (this.lockScreenEnabled) {
+                            console.log('Calling showLockScreen()');
+                            this.showLockScreen();
+                        } else {
+                            console.log('Calling showDesktop()');
+                            this.showDesktop();
+                        }
+                    } else {
+                        console.log('System NOT installed, calling showInstallation()');
+                        this.showInstallation();
+                    }
+                }, 800);
 
-                 this.setupEventListeners();
-                 this.checkForUpdates();
+                this.setupEventListeners();
+                this.checkForUpdates();
 
-                 this.initializeEnhancedFeatures();
-                 
-                 setTimeout(() => this.loadPinnedAppsFromIndexedDB(), 900);
-             }
+                this.initializeEnhancedFeatures();
+                
+                setTimeout(() => this.loadPinnedAppsFromIndexedDB(), 900);
+            }
 
-             initializeEnhancedFeatures() {
-                 if (!localStorage.getItem('namchaos-home-pages')) {
-                 setTimeout(() => {
-                     this.autoArrangeApps();
-                 }, 1000);
-                 }
+            initializeEnhancedFeatures() {
+                if (!localStorage.getItem('namchaos-home-pages')) {
+                    setTimeout(() => {
+                        this.autoArrangeApps();
+                    }, 1000);
+                }
 
-                 this.ensureInstalledAppsVisible();
-             }
+                this.ensureInstalledAppsVisible();
+            }
 
-             ensureInstalledAppsVisible() {
-                 this.installedApps.forEach(appId => {
-                 let found = false;
-                 for (let pageNum = 1; pageNum <= 3; pageNum++) {
-                     if (this.homeScreenPages[pageNum] && 
-                     this.homeScreenPages[pageNum].includes(appId)) {
-                     found = true;
-                     break;
-                     }
-                 }
+            ensureInstalledAppsVisible() {
+                this.installedApps.forEach(appId => {
+                    let found = false;
+                    for (let pageNum = 1; pageNum <= 3; pageNum++) {
+                        if (this.homeScreenPages[pageNum] && 
+                            this.homeScreenPages[pageNum].includes(appId)) {
+                            found = true;
+                            break;
+                        }
+                    }
 
-                 if (!found) {
-                     const availablePage = this.findAvailablePage();
-                     this.addAppToPage(availablePage, appId);
-                 }
-                 });
+                    if (!found) {
+                        const availablePage = this.findAvailablePage();
+                        this.addAppToPage(availablePage, appId);
+                    }
+                });
 
-                 this.saveHomeScreenPages();
-                 this.renderHomeScreenPages();
-             }
+                this.saveHomeScreenPages();
+                this.renderHomeScreenPages();
+            }
 
             initializeProcesses() {
                 return [
@@ -20351,7 +20355,6 @@ Date:   ${new Date().toDateString()}
                     };
                 }
             }
-
         }
 
         // Line 4110: Initialize NamOS 
@@ -20408,8 +20411,7 @@ Date:   ${new Date().toDateString()}
         setTimeout(() => {
             initializeUIFramework();
         }, 1000);
-
-        }
+    }
     </script>
 </body>
 </html>
