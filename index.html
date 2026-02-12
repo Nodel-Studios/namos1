@@ -9,10 +9,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
             crossorigin=""></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-analytics.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
@@ -4415,31 +4411,12 @@
         function initializeApp() {
 
         /* ===================================
-            Firebase Setup
+            Local Storage Setup (No Firebase)
             ==================================
-        /*/
+        */
 
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyBJlYSW31wegjmQav-6sTyu5W9VizGf0Ew",
-            authDomain: "database-1-bd639.firebaseapp.com",
-            projectId: "database-1-bd639",
-            storageBucket: "database-1-bd639.firebasestorage.app",
-            messagingSenderId: "14070834376",
-            appId: "1:14070834376:web:d38c20b3864f0195cef1fd",
-            measurementId: "G-5R61V9GH02"
-        };
-
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-
-        // Initialize services
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        console.log(app);
-        console.log(db);
-        console.log(auth);
+        // All data is persisted locally using localStorage and IndexedDB
+        console.log('Using local storage for data persistence');
 
         const usage = (JSON.stringify(localStorage).length/1024)*2;
         console.log(usage + "KBs")
@@ -8465,92 +8442,23 @@ onclick(() => {
 
             async loadKnowledgeBase() {
                 console.log('📖 Starting knowledge base load...');
-
                 try {
-                    console.log('🔍 Checking Firebase for existing knowledge base...');
-                    const docRef = firebase.firestore().collection("aikl").doc("knowledgeBase");
-                    const docSnap = await docRef.get();
-
-                    if (docSnap.exists) {
-                        const data = docSnap.data();
-                        console.log('✅ Loaded from Firebase:', {
-                            facts: data.facts?.length || 0,
-                            lastUpdated: data.lastUpdated,
-                            totalFacts: data.totalFacts || 0
-                        });
-
-                        // Ensure we have all required fields
-                        const loadedData = {
-                            facts: data.facts || [],
-                            categories: data.categories || {
-                                "math": ["addition", "subtraction", "multiplication", "division", "square_root"],
-                                "general": ["is_a", "has", "can", "equals"]
-                            },
-                            relationships: data.relationships || ["is_a", "has", "can", "equals"],
-                            lastUpdated: data.lastUpdated || new Date().toISOString(),
-                            totalFacts: data.totalFacts || (data.facts ? data.facts.length : 0),
-                            version: data.version || '1.0'
-                        };
-
-                        console.log('📊 Processed Firebase data:', {
-                            facts: loadedData.facts.length,
-                            categories: Object.keys(loadedData.categories),
-                            relationships: loadedData.relationships
-                        });
-
-                        return loadedData;
-                    } else {
-                        console.log('📭 No existing knowledge base in Firebase');
-
-                        // Fallback to localStorage
-                        console.log('🔍 Checking localStorage...');
-                        const saved = localStorage.getItem('namAIKnowledgeBase');
-                        if (saved) {
-                            try {
-                                const data = JSON.parse(saved);
-                                console.log('✅ Loaded from localStorage:', data.facts?.length || 0, 'facts');
-
-                                // Save to Firebase for future use
-                                console.log('💾 Backing up localStorage to Firebase...');
-                                await this.saveKnowledgeBaseToFirebase(data);
-
-                                return data;
-                            } catch (parseError) {
-                                console.error('❌ Error parsing localStorage data:', parseError);
-                            }
-                        } else {
-                            console.log('📭 No data in localStorage either');
-                        }
+                    // Load from localStorage instead of Firebase
+                    const savedKB = localStorage.getItem('namai_knowledge_base');
+                    if (savedKB) {
+                        const parsed = JSON.parse(savedKB);
+                        this.knowledgeBase = this.convertKnowledgeBaseToMap(parsed);
+                        console.log('✅ Loaded knowledge base from localStorage');
+                        return parsed;
                     }
+                    
+                    // No existing data - return empty
+                    console.log('📭 No existing knowledge base');
+                    return null;
                 } catch (error) {
-                    console.error('❌ Error loading knowledge base from Firebase:', error);
-
-                    // Fallback to localStorage
-                    try {
-                        const saved = localStorage.getItem('namAIKnowledgeBase');
-                        if (saved) {
-                            const data = JSON.parse(saved);
-                            console.log('✅ Loaded from localStorage fallback:', data.facts?.length || 0, 'facts');
-                            return data;
-                        }
-                    } catch (localError) {
-                        console.error('❌ Error loading from localStorage:', localError);
-                    }
+                    console.error('❌ Error loading knowledge base:', error);
+                    return null;
                 }
-
-                // Return default structure if nothing loaded
-                console.log('🏗️ Creating new knowledge base structure');
-                return {
-                    facts: [],
-                    categories: {
-                        "math": ["addition", "subtraction", "multiplication", "division", "square_root"],
-                        "general": ["is_a", "has", "can", "equals"]
-                    },
-                    relationships: ["is_a", "has", "can", "equals"],
-                    lastUpdated: new Date().toISOString(),
-                    totalFacts: 0,
-                    version: '1.0'
-                };
             }
 
             async saveKnowledgeBase() {
@@ -8613,10 +8521,8 @@ onclick(() => {
 
             async saveKnowledgeBaseToFirebase(data) {
                 try {
-                    console.log('🔥 Attempting to save to Firebase...');
-
-                    // Validate data structure
-                    const firebaseData = {
+                    // Save to localStorage instead of Firebase
+                    const saveData = {
                         facts: data.facts || [],
                         categories: data.categories || {
                             "math": ["addition", "subtraction", "multiplication", "division", "square_root"],
@@ -8628,20 +8534,12 @@ onclick(() => {
                         version: data.version || '1.0'
                     };
 
-                    console.log('📤 Sending to Firebase:', {
-                        collection: 'aikl',
-                        document: 'knowledgeBase', 
-                        facts: firebaseData.facts.length,
-                        totalFacts: firebaseData.totalFacts
-                    });
-
-                    await firebase.firestore().collection("aikl").doc("knowledgeBase").set(firebaseData, { merge: true });
-
-                    console.log('✅ Successfully saved to Firebase!');
+                    localStorage.setItem('namai_knowledge_base', JSON.stringify(saveData));
+                    console.log('✅ Successfully saved knowledge base to localStorage!');
                     return true;
 
                 } catch (error) {
-                    console.error('❌ Firebase save error:', error);
+                    console.error('❌ Storage error:', error);
                     throw error;
                 }
             }
@@ -8785,39 +8683,31 @@ onclick(() => {
 
             async refreshFromFirebase() {
                 try {
-                    const docRef = firebase.firestore().collection("aikl").doc("knowledgeBase");
-                    const docSnap = await docRef.get();
-
-                    if (docSnap.exists) {
-                        const data = docSnap.data();
-                        this.knowledgeBase = data;
-                        this.learnedFacts = this.convertKnowledgeBaseToMap(data);
-
-                        // Update localStorage
-                        localStorage.setItem('namAIKnowledgeBase', JSON.stringify(data));
-
-                        console.log('🔄 Refreshed knowledge base from Firebase:', data.facts?.length || 0, 'facts');
-                        this.showNotification('Knowledge base refreshed from cloud!', 'success');
+                    // Refresh from localStorage instead
+                    const saved = localStorage.getItem('namai_knowledge_base');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        this.knowledgeBase = this.convertKnowledgeBaseToMap(data);
+                        console.log('🔄 Refreshed knowledge base from local storage:', data.facts?.length || 0, 'facts');
+                        this.showNotification('Knowledge base refreshed from local storage!', 'success');
                     } else {
-                        console.log('No data found in Firebase');
-                        this.showAlert('No cloud data found');
+                        console.log('No local data found');
+                        this.showAlert('No local data found');
                     }
                 } catch (error) {
-                    console.error('Error refreshing from Firebase:', error);
-                    this.showNotification('Failed to refresh from cloud', 'error');
+                    console.error('Error refreshing from storage:', error);
+                    this.showNotification('Failed to refresh knowledge base', 'error');
                 }
             }
 
             async checkFirebaseStatus() {
                 try {
-                    console.log('🔍 Checking Firebase status...');
+                    console.log('🔍 Checking local storage status...');
 
-                    const docRef = firebase.firestore().collection("aikl").doc("knowledgeBase");
-                    const docSnap = await docRef.get();
-
-                    if (docSnap.exists) {
-                        const data = docSnap.data();
-                        console.log('✅ Firebase document exists:', {
+                    const saved = localStorage.getItem('namai_knowledge_base');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        console.log('✅ Local knowledge base exists:', {
                             facts: data.facts?.length || 0,
                             lastUpdated: data.lastUpdated,
                             totalFacts: data.totalFacts || 0
@@ -8828,7 +8718,7 @@ onclick(() => {
                             lastUpdated: data.lastUpdated
                         };
                     } else {
-                        console.log('⚠️ Firebase document does not exist yet');
+                        console.log('⚠️ No local knowledge base yet');
                         return {
                             connected: true,
                             facts: 0,
@@ -8836,7 +8726,7 @@ onclick(() => {
                         };
                     }
                 } catch (error) {
-                    console.error('❌ Firebase check failed:', error);
+                    console.error('❌ Storage check failed:', error);
                     return {
                         connected: false,
                         error: error.message
@@ -8847,43 +8737,19 @@ onclick(() => {
             checkFirebaseConnection() {
                 return new Promise((resolve) => {
                     try {
-                        if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
-                            resolve(true);
-                        } else {
-                            resolve(false);
-                        }
+                        // Check if localStorage is available
+                        localStorage.setItem('_test', '1');
+                        localStorage.removeItem('_test');
+                        resolve(true);
                     } catch (error) {
-                        console.warn('Firebase not available:', error);
+                        console.warn('Local storage not available:', error);
                         resolve(false);
                     }
                 });
             }
 
             addFirebaseSyncButtons(content) {
-                const buttonContainer = content.querySelector('.chat-actions') || content.querySelector('.quick-actions');
-
-                if (buttonContainer && !content.querySelector('#syncFirebase')) {
-                    const syncButton = document.createElement('button');
-                    syncButton.id = 'syncFirebase';
-                    syncButton.innerHTML = '🔄 Sync Cloud';
-                    syncButton.className = 'quick-action';
-                    syncButton.title = 'Sync knowledge with Firebase';
-                    syncButton.addEventListener('click', () => {
-                        this.syncWithFirebase();
-                    });
-
-                    const refreshButton = document.createElement('button');
-                    refreshButton.id = 'refreshFirebase';
-                    refreshButton.innerHTML = '📥 Refresh Cloud';
-                    refreshButton.className = 'quick-action';
-                    refreshButton.title = 'Refresh from Firebase';
-                    refreshButton.addEventListener('click', () => {
-                        this.refreshFromFirebase();
-                    });
-
-                    buttonContainer.appendChild(syncButton);
-                    buttonContainer.appendChild(refreshButton);
-                }
+                // Removed - Firebase sync not needed with local storage
             }
 
             async initializeFirebase() {
@@ -9847,22 +9713,24 @@ onclick(() => {
                 }
 
                 try {
-                    // Query Firestore for user with matching email and password
-                    const usersSnapshot = await firebase.firestore()
-                        .collection('DMail Accounts')
-                        .where('email', '==', email)
-                        .where('password', '==', password)
-                        .get();
+                    // Check localStorage for matching user
+                    const accounts = JSON.parse(localStorage.getItem('dmail_accounts') || '{}');
+                    let userData = null;
+                    let userId = null;
 
-                    if (usersSnapshot.empty) {
+                    for (const key in accounts) {
+                        const acc = accounts[key];
+                        if (acc.email === email && acc.password === password) {
+                            userData = acc;
+                            userId = acc.id;
+                            break;
+                        }
+                    }
+
+                    if (!userData) {
                         this.showDMailError(errorDiv, 'Invalid email or password');
                         return;
                     }
-
-                    // Get the user document
-                    const userDoc = usersSnapshot.docs[0];
-                    const userId = userDoc.id;
-                    const userData = userDoc.data();
 
                     // Store current user
                     this.currentDMailUser = {
@@ -9907,50 +9775,43 @@ onclick(() => {
                 }
 
                 try {
-                    // Check if email already exists
-                    const existingEmail = await firebase.firestore()
-                        .collection('DMail Accounts')
-                        .where('email', '==', email)
-                        .get();
-
-                    if (!existingEmail.empty) {
-                        this.showDMailError(errorDiv, 'Email already exists');
+                    // Check if email already exists in localStorage
+                    const accounts = JSON.parse(localStorage.getItem('dmail_accounts') || '{}');
+                    if (accounts[email]) {
+                        this.showDMailError(errorDiv, 'Email already registered');
                         return;
                     }
 
                     // Check if username already exists
-                    const existingUsername = await firebase.firestore()
-                        .collection('DMail Accounts')
-                        .where('username', '==', username)
-                        .get();
-
-                    if (!existingUsername.empty) {
+                    if (Object.values(accounts).some(acc => acc.username === username)) {
                         this.showDMailError(errorDiv, 'Username already exists');
                         return;
                     }
 
-                    // Create new user document
-                    const newUserRef = firebase.firestore().collection('DMail Accounts').doc();
-
-                    await newUserRef.set({
+                    // Create new user account in localStorage
+                    const userId = 'dmail_' + Date.now();
+                    accounts[email] = {
+                        id: userId,
                         email: email,
                         username: username,
-                        password: password, // In production, hash this!
+                        password: password,
                         inbox: [],
                         sent: [],
                         drafts: [],
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                        createdAt: new Date().toISOString(),
+                        lastLogin: new Date().toISOString()
+                    };
+
+                    localStorage.setItem('dmail_accounts', JSON.stringify(accounts));
 
                     // Store current user and show inbox
                     this.currentDMailUser = {
-                        id: newUserRef.id,
+                        id: userId,
                         email: email,
                         username: username
                     };
 
-                    this.showDMailInbox(newUserRef.id);
+                    this.showDMailInbox(userId);
 
                 } catch (error) {
                     this.showDMailError(errorDiv, `Registration error: ${error.message}`);
@@ -9961,14 +9822,22 @@ onclick(() => {
                 const container = document.getElementById('dmail-content');
 
                 try {
-                    const doc = await firebase.firestore().collection('DMail Accounts').doc(userId).get();
+                    const accounts = JSON.parse(localStorage.getItem('dmail_accounts') || '{}');
+                    let mailData = null;
 
-                    if (!doc.exists) {
+                    // Find account by ID
+                    for (const acc of Object.values(accounts)) {
+                        if (acc.id === userId) {
+                            mailData = acc;
+                            break;
+                        }
+                    }
+
+                    if (!mailData) {
                         container.innerHTML = '<div class="error">No DMail account found</div>';
                         return;
                     }
 
-                    const mailData = doc.data();
                     const inboxEmails = mailData.inbox || [];
 
                     container.innerHTML = `
@@ -10150,8 +10019,21 @@ onclick(() => {
                 }
 
                 try {
-                    const userDoc = await firebase.firestore().collection('DMail Accounts').doc(userId).get();
-                    const userData = userDoc.data();
+                    const accounts = JSON.parse(localStorage.getItem('dmail_accounts') || '{}');
+                    let userData = null;
+
+                    // Find sender
+                    for (const acc of Object.values(accounts)) {
+                        if (acc.id === userId) {
+                            userData = acc;
+                            break;
+                        }
+                    }
+
+                    if (!userData) {
+                        this.showAlert('User not found');
+                        return;
+                    }
 
                     const emailData = {
                         id: Date.now().toString(),
@@ -10159,38 +10041,32 @@ onclick(() => {
                         to: to,
                         subject: subject,
                         body: body,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        timestamp: new Date().toISOString(),
                         read: false
                     };
 
                     // Add to sender's sent folder
-                    await firebase.firestore().collection('DMail Accounts').doc(userId).update({
-                        sent: firebase.firestore.FieldValue.arrayUnion(emailData)
-                    });
+                    userData.sent = userData.sent || [];
+                    userData.sent.push(emailData);
 
                     // Find recipient and add to their inbox
-                    const recipientQuery = await firebase.firestore()
-                        .collection('DMail Accounts')
-                        .where('email', '==', to)
-                        .get();
-
-                    if (!recipientQuery.empty) {
-                        recipientQuery.forEach(async doc => {
-                            await firebase.firestore().collection('DMail Accounts').doc(doc.id).update({
-                                inbox: firebase.firestore.FieldValue.arrayUnion({
-                                    ...emailData,
-                                    id: (Date.now() + 1).toString() // Different ID for recipient
-                                })
-                            });
-                        });
+                    let recipientFound = false;
+                    for (const email in accounts) {
+                        if (accounts[email].email === to) {
+                            accounts[email].inbox = accounts[email].inbox || [];
+                            accounts[email].inbox.push(emailData);
+                            recipientFound = true;
+                            break;
+                        }
                     }
 
-                    this.showAlert('Email sent successfully!');
+                    localStorage.setItem('dmail_accounts', JSON.stringify(accounts));
+                    this.showAlert('Email ' + (recipientFound ? 'sent' : 'moved to sent') + ' successfully!');
                     this.hideComposeArea();
 
                     // Refresh sent folder if we're viewing it
-                    const activeFolder = document.querySelector('.folder.active').dataset.folder;
-                    if (activeFolder === 'sent') {
+                    const activeFolder = document.querySelector('.folder.active');
+                    if (activeFolder && activeFolder.dataset.folder === 'sent') {
                         this.switchFolder(userId, 'sent');
                     }
 
@@ -10209,14 +10085,22 @@ onclick(() => {
                     to: to,
                     subject: subject,
                     body: body,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    timestamp: new Date().toISOString()
                 };
 
                 try {
-                    await firebase.firestore().collection('DMail Accounts').doc(userId).update({
-                        drafts: firebase.firestore.FieldValue.arrayUnion(draftData)
-                    });
+                    const accounts = JSON.parse(localStorage.getItem('dmail_accounts') || '{}');
+                    
+                    // Find user and add draft
+                    for (const acc of Object.values(accounts)) {
+                        if (acc.id === userId) {
+                            acc.drafts = acc.drafts || [];
+                            acc.drafts.push(draftData);
+                            break;
+                        }
+                    }
 
+                    localStorage.setItem('dmail_accounts', JSON.stringify(accounts));
                     this.showAlert('Draft saved successfully!');
                     this.hideComposeArea();
 
@@ -10227,8 +10111,20 @@ onclick(() => {
 
             async viewEmail(userId, emailId) {
                 try {
-                    const doc = await firebase.firestore().collection('DMail Accounts').doc(userId).get();
-                    const mailData = doc.data();
+                    const accounts = JSON.parse(localStorage.getItem('dmail_accounts') || '{}');
+                    let mailData = null;
+
+                    // Find user
+                    for (const acc of Object.values(accounts)) {
+                        if (acc.id === userId) {
+                            mailData = acc;
+                            break;
+                        }
+                    }
+
+                    if (!mailData) {
+                        return;
+                    }
 
                     const activeFolder = document.querySelector('.folder.active').dataset.folder;
                     const emails = mailData[activeFolder] || [];
@@ -10265,20 +10161,20 @@ onclick(() => {
 
             async markEmailAsRead(userId, emailId) {
                 try {
-                    const doc = await firebase.firestore().collection('DMail Accounts').doc(userId).get();
-                    const mailData = doc.data();
-                    const inbox = mailData.inbox || [];
+                    const accounts = JSON.parse(localStorage.getItem('dmail_accounts') || '{}');
 
-                    const updatedInbox = inbox.map(email => {
-                        if (email.id === emailId) {
-                            return { ...email, read: true };
+                    // Find user and mark email as read
+                    for (const acc of Object.values(accounts)) {
+                        if (acc.id === userId && acc.inbox) {
+                            acc.inbox.forEach(email => {
+                                if (email.id === emailId) {
+                                    email.read = true;
+                                }
+                            });
                         }
-                        return email;
-                    });
+                    }
 
-                    await firebase.firestore().collection('DMail Accounts').doc(userId).update({
-                        inbox: updatedInbox
-                    });
+                    localStorage.setItem('dmail_accounts', JSON.stringify(accounts));
 
                 } catch (error) {
                     console.error('Error marking email as read:', error);
@@ -11617,16 +11513,19 @@ onclick(() => {
                 }
 
                 try {
-                    if (!firebase || !firebase.firestore) {
-                        this.showAlert('Database not available');
-                        return;
+                    // Use localStorage for admin credentials
+                    const adminData = localStorage.getItem('admin_credentials');
+                    const admins = adminData ? JSON.parse(adminData) : { default: { username: 'admin', password: 'admin123' } };
+
+                    let adminFound = false;
+                    for (const admin of Object.values(admins)) {
+                        if (admin.username === username && admin.password === password) {
+                            adminFound = true;
+                            break;
+                        }
                     }
 
-                    // Query Admins collection for matching credentials
-                    const adminRef = firebase.firestore().collection('Admins');
-                    const snapshot = await adminRef.where('username', '==', username).get();
-
-                    if (snapshot.empty) {
+                    if (!adminFound) {
                         this.showAlert('Invalid admin credentials');
                         passwordInput.value = '';
                         return;
