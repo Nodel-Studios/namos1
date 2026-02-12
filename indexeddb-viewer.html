@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IndexedDB Viewer - NamOS Database Inspector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .header {
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 2px solid #00d4ff;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 1.3rem;
+            margin-bottom: 4px;
+            color: #00d4ff;
+        }
+
+        .header p {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            margin: 0;
+        }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            font-size: 0.85rem;
+        }
+
+        .loading {
+            text-align: center;
+            opacity: 0.7;
+            padding: 2rem;
+        }
+
+        .database {
+            background: rgba(15, 52, 96, 0.7);
+            border: 2px solid #00d4ff;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        .database-name {
+            font-weight: bold;
+            color: #00d4ff;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+        }
+
+        .store {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 3px solid #00ff88;
+            border-radius: 4px;
+        }
+
+        .store-name {
+            color: #00ff88;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .store-info {
+            opacity: 0.8;
+            margin-bottom: 6px;
+            font-size: 0.8rem;
+        }
+
+        .store-info span {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
+        .store-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        details {
+            cursor: pointer;
+            margin-top: 6px;
+        }
+
+        summary {
+            color: #00d4ff;
+            padding: 4px 8px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 4px;
+            user-select: none;
+        }
+
+        summary:hover {
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        .data-container {
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .data-item {
+            padding: 8px;
+            margin: 6px 0;
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 2px solid #00d4ff;
+            border-radius: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .data-content {
+            flex: 1;
+            word-break: break-all;
+        }
+
+        .data-index {
+            color: #ffaa00;
+            font-size: 0.75rem;
+        }
+
+        .data-value {
+            margin-top: 2px;
+            opacity: 0.8;
+            font-size: 0.75rem;
+            white-space: pre-wrap;
+            max-height: 100px;
+            overflow: hidden;
+        }
+
+        .data-actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .action-btn {
+            padding: 3px 6px;
+            background: rgba(255, 107, 107, 0.2);
+            border: 1px solid #ff6b6b;
+            color: #ff6b6b;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0s;
+        }
+
+        .action-btn:active {
+            background: rgba(255, 107, 107, 0.4);
+        }
+
+        .edit-btn {
+            background: rgba(0, 212, 255, 0.2) !important;
+            border-color: #00d4ff !important;
+            color: #00d4ff !important;
+        }
+
+        .edit-btn:active {
+            background: rgba(0, 212, 255, 0.4) !important;
+        }
+
+        .clear-btn {
+            background: rgba(255, 170, 0, 0.2) !important;
+            border-color: #ffaa00 !important;
+            color: #ffaa00 !important;
+        }
+
+        .clear-btn:active {
+            background: rgba(255, 170, 0, 0.4) !important;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border: 2px solid #00d4ff;
+            border-radius: 8px;
+            padding: 16px;
+            max-width: 90%;
+            width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .modal-header {
+            color: #00d4ff;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 6px 12px;
+            border: 1px solid;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0s;
+        }
+
+        .save-btn {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+
+        .save-btn:active {
+            background: rgba(0, 255, 136, 0.4);
+        }
+
+        .cancel-btn {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+        }
+
+        .cancel-btn:active {
+            background: rgba(255, 107, 107, 0.4);
+        }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+            border-radius: 4px;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            resize: none;
+        }
+
+        .error {
+            color: #ff6b6b;
+            padding: 1rem;
+            background: rgba(255, 107, 107, 0.1);
+            border-left: 3px solid #ff6b6b;
+            border-radius: 4px;
+        }
+
+        .empty {
+            padding: 1rem;
+            opacity: 0.7;
+            text-align: center;
+        }
+
+        .footer {
+            padding: 12px 16px;
+            border-top: 1px solid #0f3460;
+            background: rgba(0, 0, 0, 0.3);
+            font-size: 0.8rem;
+            opacity: 0.7;
+            flex-shrink: 0;
+        }
+
+        a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.1rem;
+            }
+            .content {
+                font-size: 0.75rem;
+            }
+            .database-name {
+                font-size: 0.95rem;
+            }
+            .data-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 IndexedDB Viewer</h1>
+            <p>NamOS Database Inspector - View, edit, and manage stored data</p>
+        </div>
+
+        <div class="content" id="content">
+            <div class="loading">Loading databases...</div>
+        </div>
+
+        <div class="footer">
+            <a href="index.html">← Back to NamOS</a> | IndexedDB Viewer v2.0 (Editable)
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <div class="modal-header">Edit Entry</div>
+            <textarea id="editTextarea" placeholder="Edit JSON data..."></textarea>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel-btn" onclick="closeEditModal()">Cancel</button>
+                <button class="modal-btn save-btn" onclick="saveEditModal()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentEditContext = null;
+
+        function openEditModal(dbName, storeName, key, value) {
+            currentEditContext = { dbName, storeName, key };
+            document.getElementById('editTextarea').value = JSON.stringify(value, null, 2);
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            currentEditContext = null;
+        }
+
+        async function saveEditModal() {
+            if (!currentEditContext) return;
+            
+            try {
+                const newValue = JSON.parse(document.getElementById('editTextarea').value);
+                const { dbName, storeName, key } = currentEditContext;
+                
+                const db = await new Promise((resolve, reject) => {
+                    const req = indexedDB.open(dbName);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+
+                const tx = db.transaction([storeName], 'readwrite');
+                const store = tx.objectStore(storeName);
+                
+                await new Promise((resolve, reject) => {
+                    const req = store.put(newValue, key);
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => reject(req.error);
+                });
+
+                db.close();
+                closeEditModal();
+                loadAndDisplayDatabases();
+            } catch (err) {
+                alert('Error saving: ' + err.message);
+            }
+        }
+
+        async function deleteEntry(dbName, storeName, key) {
+            if (!confirm('Delete this entry?')) return;
+            
+            try {
+                const db = await new Promise((resolve, reject) => {
+                    const req = indexedDB.open(dbName);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+
+                const tx = db.transaction([storeName], 'readwrite');
+                const store = tx.objectStore(storeName);
+                
+                await new Promise((resolve, reject) => {
+                    const req = store.delete(key);
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => reject(req.error);
+                });
+
+                db.close();
+                loadAndDisplayDatabases();
+            } catch (err) {
+                alert('Error deleting: ' + err.message);
+            }
+        }
+
+        async function clearStore(dbName, storeName) {
+            if (!confirm(`Clear all entries in "${storeName}"?`)) return;
+            
+            try {
+                const db = await new Promise((resolve, reject) => {
+                    const req = indexedDB.open(dbName);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+
+                const tx = db.transaction([storeName], 'readwrite');
+                const store = tx.objectStore(storeName);
+                
+                await new Promise((resolve, reject) => {
+                    const req = store.clear();
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => reject(req.error);
+                });
+
+                db.close();
+                loadAndDisplayDatabases();
+            } catch (err) {
+                alert('Error clearing: ' + err.message);
+            }
+        }
+
+        async function loadAndDisplayDatabases() {
+            const content = document.getElementById('content');
+            
+            try {
+                if (!indexedDB) {
+                    content.innerHTML = '<div class="error">IndexedDB is not available in this browser</div>';
+                    return;
+                }
+
+                let databases = [];
+                
+                // Try the modern API first
+                if (typeof indexedDB.databases === 'function') {
+                    try {
+                        databases = await indexedDB.databases();
+                    } catch (e) {
+                        console.warn('indexedDB.databases() failed, trying fallback:', e);
+                        databases = [];
+                    }
+                }
+
+                // If no databases found, try accessing NamOS database directly
+                if (databases.length === 0) {
+                    databases = [{ name: 'NamOS' }];
+                }
+
+                if (databases.length === 0) {
+                    content.innerHTML = '<div class="empty">No IndexedDB databases found</div>';
+                    return;
+                }
+
+                let html = '';
+                let foundAnyData = false;
+
+                for (const dbInfo of databases) {
+                    const dbName = dbInfo.name || dbInfo;
+                    if (!dbName) continue;
+
+                    try {
+                        const db = await new Promise((resolve, reject) => {
+                            const req = indexedDB.open(dbName);
+                            req.onsuccess = () => resolve(req.result);
+                            req.onerror = () => reject(new Error(`Failed to open database: ${req.error?.message || 'Unknown error'}`));
+                        });
+
+                        const stores = Array.from(db.objectStoreNames);
+                        
+                        if (stores.length > 0) {
+                            foundAnyData = true;
+                            html += `<div class="database">
+                                <div class="database-name">📁 ${dbName}</div>`;
+
+                            for (const storeName of stores) {
+                                try {
+                                    const tx = db.transaction([storeName], 'readonly');
+                                    const store = tx.objectStore(storeName);
+                                    
+                                    const data = await new Promise((resolve, reject) => {
+                                        const req = store.getAll();
+                                        req.onsuccess = () => resolve(req.result || []);
+                                        req.onerror = () => reject(new Error(`Failed to read store: ${req.error?.message || 'Unknown error'}`));
+                                    });
+
+                                    html += `
+                                        <div class="store">
+                                            <div class="store-name">📦 ${storeName}</div>
+                                            <div class="store-info">Entries: <span>${data.length}</span></div>
+                                            <div class="store-controls">
+                                                <button class="action-btn clear-btn" onclick="clearStore('${dbName}', '${storeName}')">🗑️ Clear All</button>
+                                            </div>
+                                            <details>
+                                                <summary>► View ${data.length} item${data.length !== 1 ? 's' : ''}</summary>
+                                                <div class="data-container">
+                                    `;
+
+                                    const displayCount = Math.min(data.length, 100);
+                                    data.slice(0, displayCount).forEach((item, idx) => {
+                                        try {
+                                            const itemJson = JSON.stringify(item, null, 2);
+                                            const preview = itemJson.substring(0, 150);
+                                            const isLarge = itemJson.length > 150;
+                                            html += `
+                                                <div class="data-item">
+                                                    <div class="data-content">
+                                                        <div class="data-index">[${idx}]</div>
+                                                        <div class="data-value">${preview}${isLarge ? '...' : ''}</div>
+                                                    </div>
+                                                    <div class="data-actions">
+                                                        <button class="action-btn edit-btn" onclick="openEditModal('${dbName}', '${storeName}', ${JSON.stringify(idx).replace(/'/g, "&#39;")}, ${itemJson.replace(/'/g, "&#39;")})">✏️ Edit</button>
+                                                        <button class="action-btn" onclick="deleteEntry('${dbName}', '${storeName}', ${JSON.stringify(idx).replace(/'/g, "&#39;")})">🗑️ Delete</button>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        } catch (e) {
+                                            html += `<div class="data-item"><div class="data-content"><div class="data-index">[${idx}]</div><div class="data-value">[Unable to serialize]</div></div></div>`;
+                                        }
+                                    });
+
+                                    if (data.length > displayCount) {
+                                        html += `<div style="padding: 6px; color: #ffaa00; opacity: 0.7;">... and ${data.length - displayCount} more items</div>`;
+                                    }
+
+                                    html += `
+                                                </div>
+                                            </details>
+                                        </div>
+                                    `;
+                                } catch (storeErr) {
+                                    console.warn(`Error reading store ${storeName}:`, storeErr);
+                                    html += `<div class="store"><div class="error">Error reading ${storeName}: ${storeErr.message}</div></div>`;
+                                }
+                            }
+
+                            html += `</div>`;
+                        }
+
+                        db.close();
+
+                    } catch (dbErr) {
+                        console.warn(`Error opening database ${dbName}:`, dbErr);
+                        html += `
+                            <div class="database">
+                                <div class="error">⚠️ Error reading ${dbName}: ${dbErr.message}</div>
+                            </div>
+                        `;
+                    }
+                }
+
+                if (!foundAnyData) {
+                    content.innerHTML = '<div class="empty">No data found in IndexedDB databases</div>';
+                } else {
+                    content.innerHTML = html || '<div class="empty">No data to display</div>';
+                }
+
+            } catch (err) {
+                console.error('IndexedDB Error:', err);
+                content.innerHTML = `
+                    <div class="error">
+                        ⚠️ Error accessing IndexedDB<br>
+                        <small>${err.message || JSON.stringify(err)}</small>
+                    </div>
+                `;
+            }
+        }
+
+        // Load databases on page load
+        window.addEventListener('load', loadAndDisplayDatabases);
+
+        // Refresh every 5 seconds
+        setInterval(loadAndDisplayDatabases, 2000);
+    </script>
+</body>
+</html>
